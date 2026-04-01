@@ -62,11 +62,13 @@ NDK_FOLDER_NAME_LIBS := NDK_3.9/Include/linker_libs
 endif
 
 CFLAGS ?= -Os
+HOST_CFLAGS ?= $(CFLAGS) -std=gnu17
 CXXFLAGS ?= $(CFLAGS)
+FD2SFD_CFLAGS ?= -std=gnu17
 CFLAGS_FOR_TARGET ?= -O2 -fomit-frame-pointer
 CXXFLAGS_FOR_TARGET ?= $(CFLAGS_FOR_TARGET) -fno-exceptions -fno-rtti
 
-E:=CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
+E:=CFLAGS="$(HOST_CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CFLAGS_FOR_BUILD="$(HOST_CFLAGS)" CXXFLAGS_FOR_BUILD="$(CXXFLAGS)"  CFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)" CXXFLAGS_FOR_TARGET="$(CFLAGS_FOR_TARGET)"
 
 THREADS ?= no
 
@@ -373,6 +375,8 @@ update-mpfr:
 # binutils
 # =================================================
 CONFIG_BINUTILS =--prefix=$(PREFIX) --target=$(TARGET) --disable-werror --enable-tui --disable-nls
+BINUTILS_HOST_CFLAGS ?= $(HOST_CFLAGS) -DVOID_SIGHANDLER
+BINUTILS_MAKE_FLAGS := CFLAGS="$(BINUTILS_HOST_CFLAGS)"
 
 ifneq (m68k-elf,$(TARGET))
 CONFIG_BINUTILS += --disable-plugins
@@ -407,16 +411,16 @@ $(BUILD)/binutils/_done: $(BUILD)/binutils/Makefile $(shell find 2>/dev/null $(P
 	@touch -t 0001010000 $(PROJECTS)/binutils/binutils/arlex.l
 	@touch -t 0001010000 $(PROJECTS)/binutils/ld/ldgram.y
 	@touch -t 0001010000 $(PROJECTS)/binutils/intl/plural.y
-	$(L0)"make binutils bfd"$(L1)$(MAKE) -C $(BUILD)/binutils all-bfd $(L2)
-	$(L0)"make binutils gas"$(L1)$(MAKE) -C $(BUILD)/binutils all-gas $(L2)
-	$(L0)"make binutils binutils"$(L1)$(MAKE) -C $(BUILD)/binutils all-binutils $(L2)
-	$(L0)"make binutils ld"$(L1)$(MAKE) -C $(BUILD)/binutils all-ld $(L2)
-	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(L2)
+	$(L0)"make binutils bfd"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) all-bfd $(L2)
+	$(L0)"make binutils gas"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) all-gas $(L2)
+	$(L0)"make binutils binutils"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) all-binutils $(L2)
+	$(L0)"make binutils ld"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) all-ld $(L2)
+	$(L0)"install binutils"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) install-gas install-binutils install-ld $(L2)
 	@echo "done" >$@
 
 $(BUILD)/binutils/Makefile: $(PROJECTS)/binutils/configure
 	@mkdir -p $(BUILD)/binutils
-	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
+	$(L0)"configure binutils"$(L1) cd $(BUILD)/binutils && $(E) CFLAGS="$(BINUTILS_HOST_CFLAGS)" CFLAGS_FOR_BUILD="$(BINUTILS_HOST_CFLAGS)" $(PROJECTS)/binutils/configure $(CONFIG_BINUTILS) $(L2)
 
 
 $(PROJECTS)/binutils/configure:
@@ -429,10 +433,10 @@ $(PROJECTS)/binutils/configure:
 gdb: $(BUILD)/binutils/_gdb
 
 $(BUILD)/binutils/_gdb: $(BUILD)/binutils/_done
-	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils configure-gdb $(L2)
-	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb all-lib $(L2)
-	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(ALL_GDB) $(L2)
-	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
+	$(L0)"make binutils configure gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) configure-gdb $(L2)
+	$(L0)"make binutils gdb libs"$(L1)$(MAKE) -C $(BUILD)/binutils/gdb $(BINUTILS_MAKE_FLAGS) all-lib $(L2)
+	$(L0)"make binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) $(ALL_GDB) $(L2)
+	$(L0)"install binutils gdb"$(L1)$(MAKE) -C $(BUILD)/binutils $(BINUTILS_MAKE_FLAGS) install-gas install-binutils install-ld $(INSTALL_GDB) $(L2)
 	@echo "done" >$@
 
 	
@@ -444,8 +448,8 @@ CONFIG_GRPOF := --prefix=$(PREFIX) --target=$(TARGET) --disable-werror
 gprof: $(BUILD)/binutils/_gprof
 
 $(BUILD)/binutils/_gprof: $(BUILD)/binutils/gprof/Makefile $(shell find 2>/dev/null $(PROJECTS)/binutils/gprof -type f)
-	$(L0)"make gprof"$(L1)$(MAKE) -C $(BUILD)/binutils/gprof all $(L2)
-	$(L0)"install gprof"$(L1)$(MAKE) -C $(BUILD)/binutils/gprof install $(L2)
+	$(L0)"make gprof"$(L1)$(MAKE) -C $(BUILD)/binutils/gprof CFLAGS="$(HOST_CFLAGS)" all $(L2)
+	$(L0)"install gprof"$(L1)$(MAKE) -C $(BUILD)/binutils/gprof CFLAGS="$(HOST_CFLAGS)" install $(L2)
 	@echo "done" >$@
 
 $(BUILD)/binutils/gprof/Makefile: $(PROJECTS)/binutils/configure $(BUILD)/binutils/_done
@@ -515,13 +519,13 @@ $(BUILD)/fd2sfd/_done: $(PREFIX)/bin/fd2sfd
 	@echo "done" >$@
 
 $(PREFIX)/bin/fd2sfd: $(BUILD)/fd2sfd/Makefile $(shell find 2>/dev/null $(PROJECTS)/fd2sfd -not \( -path $(PROJECTS)/fd2sfd/.git -prune \) -type f)
-	$(L0)"make fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd all $(L2)
+	$(L0)"make fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd CFLAGS="$(CFLAGS)" FD2SFD_CFLAGS="$(FD2SFD_CFLAGS)" all $(L2)
 	@mkdir -p $(PREFIX)/bin/
-	$(L0)"install fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd install $(L2)
+	$(L0)"install fd2sfd"$(L1) $(MAKE) -C $(BUILD)/fd2sfd CFLAGS="$(CFLAGS)" FD2SFD_CFLAGS="$(FD2SFD_CFLAGS)" install $(L2)
 
-$(BUILD)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure
+$(BUILD)/fd2sfd/Makefile: $(PROJECTS)/fd2sfd/configure $(PROJECTS)/fd2sfd/Makefile.in
 	@mkdir -p $(BUILD)/fd2sfd
-	$(L0)"configure fd2sfd"$(L1) cd $(BUILD)/fd2sfd && $(E) $(PROJECTS)/fd2sfd/configure $(CONFIG_FD2SFD) $(L2)
+	$(L0)"configure fd2sfd"$(L1) cd $(BUILD)/fd2sfd && $(E) FD2SFD_CFLAGS="$(FD2SFD_CFLAGS)" $(PROJECTS)/fd2sfd/configure $(CONFIG_FD2SFD) $(L2)
 
 $(PROJECTS)/fd2sfd/configure:
 	@cd $(PROJECTS) &&	git clone -b $(fd2sfd_BRANCH) --depth 4 $(fd2sfd_URL)
@@ -543,7 +547,7 @@ $(PREFIX)/bin/fd2pragma: $(BUILD)/fd2pragma/fd2pragma
 
 $(BUILD)/fd2pragma/fd2pragma: $(PROJECTS)/fd2pragma/makefile $(shell find 2>/dev/null $(PROJECTS)/fd2pragma -not \( -path $(PROJECTS)/fd2pragma/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/fd2pragma
-	$(L0)"make fd2sfd"$(L1) cd $(PROJECTS)/fd2pragma && $(CC) -o $@ $(CFLAGS) fd2pragma.c $(L2)
+	$(L0)"make fd2sfd"$(L1) cd $(PROJECTS)/fd2pragma && $(CC) -o $@ $(HOST_CFLAGS) fd2pragma.c $(L2)
 
 $(PROJECTS)/fd2pragma/makefile:
 	@cd $(PROJECTS) &&	git clone -b $(fd2pragma_BRANCH) --depth 4 $(fd2pragma_URL)
@@ -562,7 +566,7 @@ $(PREFIX)/bin/ira: $(BUILD)/ira/ira
 
 $(BUILD)/ira/ira: $(PROJECTS)/ira/Makefile $(shell find 2>/dev/null $(PROJECTS)/ira -not \( -path $(PROJECTS)/ira/.git -prune \) -type f)
 	@mkdir -p $(BUILD)/ira
-	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(CFLAGS) *.c -std=c99 $(L2)
+	$(L0)"make ira"$(L1) cd $(PROJECTS)/ira && $(CC) -o $@ $(HOST_CFLAGS) *.c -std=c99 $(L2)
 
 $(PROJECTS)/ira/Makefile:
 	@cd $(PROJECTS) &&	git clone -b $(ira_BRANCH) --depth 4 $(ira_URL)

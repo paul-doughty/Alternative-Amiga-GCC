@@ -169,6 +169,21 @@ time make all -j4
 ```
 The above commands take roughly 10 minutes on my laptop running Ubuntu yet the same commands take forever running cygwin on Windows.
 
+### Host compiler compatibility
+Some host distributions now default to newer C language modes that can break older host tools during the build (for example `fd2sfd` or `gdb`/readline related host steps).
+
+The makefile sets compatible defaults for host-side tools, but you can still override them when needed:
+
+```bash
+make all HOST_CFLAGS='-O2 -std=gnu17'
+```
+
+If you need to tune the binutils/gdb host compile flags separately:
+
+```bash
+make gdb BINUTILS_HOST_CFLAGS='-O2 -std=gnu17 -DVOID_SIGHANDLER'
+```
+
 ## Kickstart 1.3
 
 If you plan to develop for Kickstart 1.3 you should use `-mcrt=nix13` in your compiler commandline
